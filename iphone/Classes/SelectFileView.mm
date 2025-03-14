@@ -291,7 +291,16 @@ static int dirListCompare(int a, int b) {
     bool db = [sb characterAtIndex:0] == '.';
     if (da != db)
         return da ? -1 : 1;
-    return [sa localizedCaseInsensitiveCompare:sb];
+    return [sa caseInsensitiveCompare:sb];
+}
+
+static void dirListSwap(int a, int b) {
+    NSString *ts = [dirList objectAtIndex:a];
+    [dirList replaceObjectAtIndex:a withObject:[dirList objectAtIndex:b]];
+    [dirList replaceObjectAtIndex:b withObject:ts];
+    bool tb = dirType[a];
+    dirType[a] = dirType[b];
+    dirType[b] = tb;
 }
 
 - (IBAction) typeChanged {
@@ -316,11 +325,14 @@ static int dirListCompare(int a, int b) {
     struct dirent *d;
     
     while ((d = readdir(dir)) != NULL) {
-        if (strcmp(d->d_name, ".") == 0)
+        if (strcmp(d->d_name, "..") == 0) {
+            if (strcmp(cDirName, ".") == 0)
+                // Don't show ".." in the top-level (Documents) directory
+                continue;
+        } else if (d->d_name[0] == '.') {
+            // Apart from '..', suppress everything that starts with '.'
             continue;
-        if (strcmp(d->d_name, "..") == 0 && strcmp(cDirName, ".") == 0)
-            // Don't show ".." in the top-level (Documents) directory
-            continue;
+        }
         char *p = (char *) malloc(strlen(cDirName) + strlen(d->d_name) + 2);
         strcpy(p, cDirName);
         strcat(p, "/");
@@ -348,16 +360,35 @@ static int dirListCompare(int a, int b) {
         }
     }
     closedir(dir);
-    for (int i = 0; i < dirTypeLength - 1; i++)
-        for (int j = i + 1; j < dirTypeLength; j++)
-            if (dirListCompare(i, j) > 0) {
-                NSString *ts = [dirList objectAtIndex:i];
-                [dirList replaceObjectAtIndex:i withObject:[dirList objectAtIndex:j]];
-                [dirList replaceObjectAtIndex:j withObject:ts];
-                bool tb = dirType[i];
-                dirType[i] = dirType[j];
-                dirType[j] = tb;
+
+    /* https://en.wikipedia.org/wiki/Heapsort#Standard_implementation */
+    int start = dirTypeLength / 2;
+    int end = dirTypeLength;
+    while (end > 1) {
+        if (start > 0) {    /* Heap construction */
+            start--;
+        } else {            /* Heap extraction */
+            end--;
+            dirListSwap(end, 0);
+        }
+
+        /* The following is siftDown(a, start, end) */
+        int root = start;
+        int child;
+        while ((child = root * 2 + 1) < end) {
+            /* If there is a right child and that child is greater */
+            if (child + 1 < end && dirListCompare(child, child + 1) < 0)
+                child++;
+
+            if (dirListCompare(root, child) < 0) {
+                dirListSwap(root, child);
+                root = child;         /* repeat to continue sifting down the child now */
+            } else {
+                break;                /* return to outer loop */
             }
+        }
+    }
+
     [directoryListingView reloadData];
 }
 
