@@ -33,14 +33,6 @@
 /* HP-42S font data */
 /********************/
 
-#if defined(WINDOWS) && !defined(__GNUC__)
-/* Disable warnings:
- * C4838: conversion from 'int' to 'const char' requires a narrowing conversion
- */
-#pragma warning(push)
-#pragma warning(disable:4838)
-#endif
-
 
 static const unsigned char bigchars[138][5] =
     {
@@ -607,11 +599,6 @@ static const unsigned char smallchars_map[138] =
         /* 137 */ 135,
     };
 
-#if defined(WINDOWS) && !defined(__GNUC__)
-#pragma warning(pop)
-#endif
-
-
 
 static char display[272];
 
@@ -1037,7 +1024,7 @@ static int prgmline2buf(char *buf, int len, int4 line, int highlight,
         if (line < 10)
             char2buf(buf, len, &bufptr, '0');
         bufptr += int2string(line, buf + bufptr, len - bufptr);
-        char h = highlight == 0 ? ' ' : highlight == 2 && prgms[current_prgm].locked ? 135 : 6;
+        char h = highlight == 0 ? ' ' : highlight == 2 && prgms[current_prgm].locked ? (char) 135 : 6;
         char2buf(buf, len, &bufptr, h);
     }
 
@@ -1162,7 +1149,7 @@ void tb_print_current_program(textbuf *tb) {
         char *buf2 = xstr == NULL ? buf : xstr;
         for (int i = 0; i < len; i++)
             if (buf2[i] == 10)
-                buf2[i] = 138;
+                buf2[i] = (char) 138;
         int off = 0;
         while (len > 0) {
             int slen = len <= 100 ? len : 100;
@@ -1180,7 +1167,7 @@ void tb_print_current_program(textbuf *tb) {
 void display_prgm_line(int row, int line_offset) {
     int4 tmppc = pc;
     int4 tmpline = pc2line(pc);
-    int cmd;
+    int cmd = CMD_NONE;
     arg_struct arg;
     char buf[44];
     int bufptr;
@@ -1302,7 +1289,7 @@ void display_incomplete_command(int row) {
         if (line < 10)
             char2buf(buf, 40, &bufptr, '0');
         bufptr += int2string(line, buf + bufptr, 40 - bufptr);
-        char2buf(buf, 40, &bufptr, prgms[current_prgm].locked ? 135 : 6);
+        char2buf(buf, 40, &bufptr, prgms[current_prgm].locked ? (char) 135 : 6);
     }
 
     if (incomplete_command == CMD_ASSIGNb) {

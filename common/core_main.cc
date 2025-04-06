@@ -1080,7 +1080,7 @@ static void export_hp42s(int index) {
                     int i;
                     if ((code_name & 0x80) == 0) {
                         cmdbuf[cmdlen++] = 0xf0 + arg.length + 2;
-                        cmdbuf[cmdlen++] = 0xa7;
+                        cmdbuf[cmdlen++] = (char) 0xa7;
                     } else {
                         cmdbuf[cmdlen++] = 0xf0 + arg.length + 1;
                     }
@@ -1092,8 +1092,8 @@ static void export_hp42s(int index) {
                     unsigned char suffix;
                     if (code_std_1 != 0) {
                         if (code_std_1 == 0xf2 && (code_std_2 & 0x80) == 0) {
-                            cmdbuf[cmdlen++] = 0xf3;
-                            cmdbuf[cmdlen++] = 0xa7;
+                            cmdbuf[cmdlen++] = (char) 0xf3;
+                            cmdbuf[cmdlen++] = (char) 0xa7;
                         } else {
                             cmdbuf[cmdlen++] = code_std_1;
                         }
@@ -1244,7 +1244,7 @@ int4 core_program_size(int prgm_index) {
                         p = orig_num;
                     else
                         p = phloat2program(arg.val_d);
-                    size += strlen(p) + 1;
+                    size += (int4) strlen(p) + 1;
                 } else if (cmd == CMD_STRING) {
                     size += arg.length + 1;
                 } else if (cmd >= CMD_ASGN01 && cmd <= CMD_ASGN18) {
@@ -2069,7 +2069,7 @@ static void decode_string(unsigned char *buf, int *cmd, arg_struct *arg, char **
     int pos = 0;
     int byte1 = buf[pos++];
     int byte2 = buf[pos++];
-    int str_len;
+    int str_len = 0;
     bool extra_extension = false;
     bool assign = false;
     
@@ -2089,7 +2089,7 @@ static void decode_string(unsigned char *buf, int *cmd, arg_struct *arg, char **
             arg->val.text[i] = buf[pos++];
         if (extra_extension) {
             memmove(arg->val.text + 1, arg->val.text, str_len);
-            arg->val.text[0] = 0xa7;
+            arg->val.text[0] = (char) 0xa7;
             str_len++;
         }
         arg->length = str_len;
@@ -2166,6 +2166,7 @@ static void decode_string(unsigned char *buf, int *cmd, arg_struct *arg, char **
             int suffix = buf[pos++];
             decode_suffix(*cmd, suffix, arg);
         } else if (flag == 3) {
+            int key;
             if (byte2 == 0xc0) {
                 /* ASSIGN */
                 str_len = byte1 - 0xf2;
@@ -2181,7 +2182,6 @@ static void decode_string(unsigned char *buf, int *cmd, arg_struct *arg, char **
                     goto xrom_string;
                 *cmd = byte2 == 0xc2 || byte2 == 0xca
                         ? CMD_KEY1X : CMD_KEY1G;
-                int key;
                 key = buf[pos++];
                 if (key < 1 || key > 9) {
                     /* Treat as plain string. Alas, it is
@@ -2207,7 +2207,7 @@ static void decode_string(unsigned char *buf, int *cmd, arg_struct *arg, char **
                 /* KEYG/KEYX suffix */
                 if (byte1 != 0xf3)
                     goto xrom_string;
-                int key = buf[pos++];
+                key = buf[pos++];
                 if (key < 1 || key > 9)
                     goto bad_keyg_keyx;
                 *cmd = byte2 == 0xe2 ? CMD_KEY1X : CMD_KEY1G;
@@ -4585,7 +4585,7 @@ void core_paste(const char *buf) {
                                 free(is_string);
                                 is_string = NULL;
                                 phloat *newdata;
-                                newdata = (phloat *) realloc(data, 2 * n * sizeof(phloat));
+                                newdata = (phloat *) realloc((void *) data, 2 * n * sizeof(phloat));
                                 if (newdata == NULL) {
                                     nomem:
                                     free(data);
